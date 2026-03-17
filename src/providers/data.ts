@@ -24,13 +24,13 @@ const options: CreateDataProviderOptions = {
       return params;
     },
     mapResponse: async (response) => {
-      const payload: ListResponse = await response.json();
+      const payload: ListResponse = await response.clone().json();
 
       return payload.data ?? [];
     },
 
     getTotalCount: async (response) => {
-      const payload: ListResponse = await response.json();
+      const payload: ListResponse = await response.clone().json();
 
       return payload.pagination?.total ?? payload.data?.length ?? 0;
     },
