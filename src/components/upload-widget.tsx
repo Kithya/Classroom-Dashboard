@@ -1,10 +1,13 @@
 import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from "@/constants";
-import { UploadWidgetValue } from "@/types";
+import { UploadWidgetProps, UploadWidgetValue } from "@/types";
 import { UploadCloud } from "lucide-react";
-import { m } from "node_modules/react-router/dist/development/index-react-server-client-EzWJGpN_.d.mts";
 import React, { useEffect, useRef, useState } from "react";
 
-const UploadWidget = ({ value, onChange, disabled = false }) => {
+const UploadWidget = ({
+  value,
+  onChange,
+  disabled = false,
+}: UploadWidgetProps) => {
   const [preview, setPreview] = useState<UploadWidgetValue | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
 
@@ -12,7 +15,7 @@ const UploadWidget = ({ value, onChange, disabled = false }) => {
   const onChangeRef = useRef(onChange);
 
   useEffect(() => {
-    setPreview(value);
+    setPreview(value ?? null);
   }, [value]);
 
   useEffect(() => {
@@ -41,7 +44,7 @@ const UploadWidget = ({ value, onChange, disabled = false }) => {
               publicId: result.info.public_id,
             };
             setPreview(payload);
-            onChange.current?.(payload);
+            onChangeRef.current?.(payload);
           }
         },
       );

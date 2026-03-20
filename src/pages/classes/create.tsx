@@ -3,11 +3,11 @@ import { CreateView } from "@/components/refine-ui/views/create-view";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ActionTypes, useBack } from "@refinedev/core";
+import { useBack, useList } from "@refinedev/core";
 import React from "react";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm } from "@refinedev/react-hook-form";
 import { classSchema } from "@/lib/schema";
 import {
   Form,
@@ -18,7 +18,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -26,12 +25,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { subjects, teachers } from "@/constants";
 import { Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import UploadWidget from "@/components/upload-widget";
+import { Subject, User } from "@/types";
 
 const Create = () => {
+  const back = useBack();
+
   const form = useForm({
     resolver: zodResolver(classSchema),
     refineCoreProps: {
@@ -41,23 +42,36 @@ const Create = () => {
   });
 
   const {
+    refineCore: { onFinish },
     handleSubmit,
     formState: { isSubmitting, errors },
     control,
   } = form;
 
-  const onSubmit = (data: z.infer<typeof classSchema>) => {
+  const onSubmit = async (data: z.infer<typeof classSchema>) => {
     try {
+      await onFinish(data);
       console.log(data);
     } catch (error) {
       console.log("Error creating new classes", error);
     }
   };
 
-  const back = useBack();
-
   const bannerPublicId = form.watch("bannerCldPubId");
-  const setBannerImage = (file, field) => {
+
+  const listPagination = React.useMemo(
+    () => ({
+      pageSize: 100,
+    }),
+    [],
+  );
+
+  const teacherFilters = React.useMemo(
+    () => [{ field: "role", operator: "eq" as const, value: "teacher" }],
+    [],
+  );
+
+  const setBannerImage = (file: any, field: any) => {
     if (file) {
       field.onChange(file.url);
       form.setValue("bannerCldPubId", file.publicId, {
@@ -72,6 +86,29 @@ const Create = () => {
       });
     }
   };
+
+  const { query: subjectQuery } = useList<Subject>({
+    resource: "subjects",
+    pagination: listPagination,
+    queryOptions: {
+      retry: false,
+    },
+  });
+
+  const { query: teacherQuery } = useList<User>({
+    resource: "users",
+    filters: teacherFilters,
+    pagination: listPagination,
+    queryOptions: {
+      retry: false,
+    },
+  });
+
+  const subjects = subjectQuery.data?.data || [];
+  const subjectLoading = subjectQuery.isLoading;
+
+  const teachers = teacherQuery.data?.data || [];
+  const teacherLoading = teacherQuery.isLoading;
 
   return (
     <CreateView className="class-view">
@@ -120,13 +157,11 @@ const Create = () => {
                             field.value
                               ? {
                                   url: field.value,
-                                  publicIdL: bannerPublicId ?? "",
+                                  publicId: bannerPublicId ?? "",
                                 }
                               : null
                           }
-                          onChange={(file: any, field: any) =>
-                            setBannerImage(file, field)
-                          }
+                          onChange={(file: any) => setBannerImage(file, field)}
                         />
                       </FormControl>
                       <FormMessage />
@@ -172,6 +207,7 @@ const Create = () => {
                             field.onChange(Number(value))
                           }
                           value={field.value?.toString()}
+                          disabled={subjectLoading}
                         >
                           <FormControl>
                             <SelectTrigger className="w-full">
@@ -205,6 +241,7 @@ const Create = () => {
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
+                          disabled={teacherLoading}
                         >
                           <FormControl>
                             <SelectTrigger className="w-full">

@@ -1,6 +1,27 @@
 import { BACKEND_BASE_URL } from "@/constants";
-import { ListResponse } from "@/types";
+import { CreateResponse, ListResponse } from "@/types";
+import { HttpError } from "@refinedev/core";
 import { createDataProvider, CreateDataProviderOptions } from "@refinedev/rest";
+
+const buildHttpError = async (respone: Response): Promise<HttpError> => {
+  let message = "Request failed";
+
+  try {
+    const payload = (await respone.json()) as {
+      message?: string;
+      error?: string;
+    };
+    if (payload?.message) message = payload.message;
+    else if (payload?.error) message = payload.error;
+  } catch {
+    // ignore error
+  }
+
+  return {
+    message,
+    statusCode: respone.status,
+  };
+};
 
 const options: CreateDataProviderOptions = {
   getList: {
@@ -20,19 +41,37 @@ const options: CreateDataProviderOptions = {
           if (field === "department") params.department = value;
           if (field === "name" || field === "code") params.search = value;
         }
+
+        if (resource === "users") {
+          if (field === "role") params.role = value;
+          if (field === "name" || field === "email") params.search = value;
+        }
       });
       return params;
     },
     mapResponse: async (response) => {
+      if (!response.ok) throw await buildHttpError(response);
       const payload: ListResponse = await response.clone().json();
 
       return payload.data ?? [];
     },
 
     getTotalCount: async (response) => {
+      if (!response.ok) throw await buildHttpError(response);
       const payload: ListResponse = await response.clone().json();
 
       return payload.pagination?.total ?? payload.data?.length ?? 0;
+    },
+  },
+  create: {
+    getEndpoint: ({ resource }) => resource,
+
+    buildBodyParams: async ({ variables }) =>
+      (variables as Record<string, unknown>) ?? {},
+    mapResponse: async (response) => {
+      if (!response.ok) throw await buildHttpError(response);
+      const json: CreateResponse = await response.json();
+      return json.data ?? [];
     },
   },
 };
